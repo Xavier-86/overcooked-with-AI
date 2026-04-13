@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """
-Human-Test 核心逻辑
-集成 ZSCEval 环境和策略
+overcooked-with-AI 核心逻辑
+支持独立演示模式和完整 ZSC-Eval 集成
 """
 
 import sys
 import os
 import time
-import pickle
 import numpy as np
 from typing import Optional, Dict, Any, List
 
@@ -16,20 +15,87 @@ parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')
 if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
-# 导入 ZSCEval 组件
+# 导入 ZSCEval 组件（可选）
 try:
     from zsceval.human_exp.agent_pool import ZSCEvalAgentPool
     from zsceval.envs.overcooked.overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
-    from zsceval.envs.overcooked.overcooked_ai_py.mdp.actions import Action
-    from zsceval.envs.overcooked.overcooked_ai_py.visualization.state_visualizer import StateVisualizer
     ZSCEVAL_AVAILABLE = True
-except ImportError as e:
-    print(f"警告: 无法导入 zsceval 模块: {e}")
+except ImportError:
     ZSCEVAL_AVAILABLE = False
 
 from .renderer import CLIRenderer, ASCIIRenderer
 from .keyboard import KeyboardHandler
-from .utils import get_policy_path, load_policy_config
+
+
+class DummyMDP:
+    """演示模式使用的简化 MDP"""
+    
+    def __init__(self, env_name: str = "random0_m"):
+        self.env_name = env_name
+        # 简化地图 7x5
+        self.terrain_mtx = [
+            ['#', '#', '#', '#', '#', '#', '#'],
+            ['#', ' ', ' ', ' ', ' ', ' ', '#'],
+            ['#', ' ', 'O', ' ', 'S', ' ', '#'],
+            ['#', ' ', ' ', 'D', ' ', ' ', '#'],
+            ['#', '#', '#', '#', '#', '#', '#'],
+        ]
+        self.height = len(self.terrain_mtx)
+        self.width = len(self.terrain_mtx[0])
+    
+    def get_standard_start_state(self):
+        """返回初始状态"""
+        return DummyState()
+    
+    def get_state_transition(self, state, actions):
+        """模拟状态转移"""
+        # 简化：随机返回奖励和结束标志
+        reward = np.random.choice([0, 0, 0, 5, 10], p=[0.7, 0.1, 0.1, 0.05, 0.05])
+        done = False
+        info = {'episode_done': False}
+        return DummyState(), reward, done, info
+    
+    def get_valid_player_positions(self):
+        """获取有效位置"""
+        positions = []
+        for y, row in enumerate(self.terrain_mtx):
+            for x, cell in enumerate(row):
+                if cell != '#':
+                    positions.append((x, y))
+        return positions
+
+
+class DummyState:
+    """演示模式使用的简化状态"""
+    
+    def __init__(self):
+        self.players = [DummyPlayer(0), DummyPlayer(1)]
+    
+    def to_dict(self):
+        return {
+            'players': [
+                {'position': p.position, 'orientation': p.orientation, 'held_object': None}
+                for p in self.players
+            ],
+            'objects': {}
+        }
+
+
+class DummyPlayer:
+    """演示模式使用的简化玩家"""
+    
+    def __init__(self, idx: int):
+        self.idx = idx
+        # 玩家0在左上，玩家1在右下
+        self.position = (1, 1) if idx == 0 else (5, 3)
+        self.orientation = (0, -1)  # 朝北
+        self._held_object = None
+    
+    def has_object(self):
+        return self._held_object is not None
+    
+    def get_object(self):
+        return self._held_object
 
 
 class HumanTest:
@@ -110,9 +176,21 @@ class HumanTest:
     
     def _setup_environment(self):
         """设置环境和策略"""
-        if not ZSCEVAL_AVAILABLE:
-            raise RuntimeError("zsceval 模块不可用，请确保在 ZSC-Eval 项目目录下运行")
+        self.demo_mode = False
         
+        if not ZSCEVAL_AVAILABLE:
+            print("\n⚠️  演示模式: 未检测到 ZSC-Eval 环境")
+            print("    将使用模拟环境运行，AI 将采用随机策略")
+            print("    如需完整功能，请安装 ZSC-Eval:\n")
+            print("    git clone <ZSC-Eval-repo>")
+            print("    cd ZSC-Eval")
+            print("    pip install -e .\n")
+            self.demo_mode = True
+            self.mdp = DummyMDP(self.env_name)
+            self.ai_agent = None
+            return
+        
+        # 正常模式：尝试加载 ZSC-Eval
         try:
             # 加载策略池配置
             policy_pool_path = os.environ.get('POLICY_POOL', os.path.join(parent_dir, 'policy_pool'))
@@ -134,8 +212,8 @@ class HumanTest:
                     )
             
             if not os.path.exists(yaml_path):
-                print(f"警告: 找不到策略配置文件: {yaml_path}")
-                print(f"将尝试直接加载策略...")
+                print(f"⚠️  警告: 找不到策略配置文件: {yaml_path}")
+                print(f"    将使用随机策略运行...")
                 self.agent_pool = None
             else:
                 print(f"正在加载策略池: {yaml_path}")
@@ -149,35 +227,45 @@ class HumanTest:
                 print(f"  可用算法: {list(self.agent_pool.policy_pool.keys())}")
         
         except Exception as e:
-            print(f"警告: 环境加载失败: {e}")
+            print(f"⚠️  警告: 环境加载失败: {e}")
+            print("    切换到演示模式...")
+            self.demo_mode = True
             self.agent_pool = None
         
         # 创建 MDP 用于状态处理
         try:
-            self.mdp = OvercookedGridworld.from_layout_name(self.env_name)
-            print(f"✓ 地图加载成功: {self.env_name}")
+            if not self.demo_mode:
+                self.mdp = OvercookedGridworld.from_layout_name(self.env_name)
+                print(f"✓ 地图加载成功: {self.env_name}")
         except Exception as e:
-            print(f"警告: 地图加载失败: {e}")
-            self.mdp = None
+            print(f"⚠️  警告: 地图加载失败: {e}")
+            print("    使用演示模式...")
+            self.demo_mode = True
+            self.mdp = DummyMDP(self.env_name)
         
         # 获取AI策略
         self.ai_agent = None
-        if self.agent_pool and self.algo in self.agent_pool.policy_pool:
+        if not self.demo_mode and self.agent_pool and self.algo in self.agent_pool.policy_pool:
             try:
                 self.ai_agent = self.agent_pool.get_agent(self.algo)
                 print(f"✓ AI 策略加载成功: {self.algo}")
             except Exception as e:
-                print(f"警告: AI 策略加载失败: {e}")
+                print(f"⚠️  警告: AI 策略加载失败: {e}")
     
     def run(self):
         """运行测试"""
         print(f"\n{'='*60}")
-        print(f"  Human-Test: 人机混合测试")
+        if self.demo_mode:
+            print(f"  overcooked-with-AI: 演示模式")
+        else:
+            print(f"  overcooked-with-AI: 人机混合测试")
         print(f"{'='*60}")
         print(f"  地图: {self.env_name}")
         print(f"  AI算法: {self.algo}")
         print(f"  你是: Player {self.human_player} (人类)")
         print(f"  AI是: Player {self.ai_player} (AI)")
+        if self.demo_mode:
+            print(f"  模式: 🎮 演示 (AI 随机行动)")
         print(f"{'='*60}\n")
         
         print("控制说明:")
@@ -198,11 +286,7 @@ class HumanTest:
         print(f"\n--- 第 {episode_num}/{self.episodes} 局 ---")
         
         # 初始化游戏状态
-        if self.mdp:
-            state = self.mdp.get_standard_start_state()
-        else:
-            print("错误: 无法初始化游戏状态")
-            return
+        state = self.mdp.get_standard_start_state()
         
         # 开始监听键盘
         self.keyboard.start()
@@ -276,7 +360,7 @@ class HumanTest:
     def _get_ai_action(self, state) -> int:
         """获取 AI 的动作"""
         if self.ai_agent is None:
-            # 随机策略
+            # 随机策略（演示模式）
             return np.random.randint(0, 6)
         
         try:
@@ -291,10 +375,10 @@ class HumanTest:
         """渲染游戏画面"""
         try:
             # 转换为可视化网格
-            if self.mdp:
-                grid = self._state_to_grid(state)
-            else:
+            if self.demo_mode:
                 grid = self._get_dummy_grid()
+            else:
+                grid = self._state_to_grid(state)
             
             game_state = {
                 'grid': grid,
@@ -325,13 +409,14 @@ class HumanTest:
                 grid.append(row)
             
             # 添加玩家位置
-            for i, player in enumerate(state.players):
-                x, y = player.position
-                if 0 <= y < height and 0 <= x < width:
-                    symbol = 'P' if i == self.human_player else 'A'
-                    if player.has_object():
-                        symbol = symbol.lower()
-                    grid[y][x] = symbol
+            if hasattr(state, 'players'):
+                for i, player in enumerate(state.players):
+                    x, y = player.position
+                    if 0 <= y < height and 0 <= x < width:
+                        symbol = 'P' if i == self.human_player else 'A'
+                        if player.has_object():
+                            symbol = symbol.lower()
+                        grid[y][x] = symbol
         else:
             grid = self._get_dummy_grid()
         
@@ -362,6 +447,10 @@ class HumanTest:
             print(f"  平均得分: {avg_score:.2f}")
             print(f"  平均时长: {avg_duration:.1f}s")
             print(f"  总汤数: {total_soups}")
+        
+        if self.demo_mode:
+            print(f"\n  💡 提示: 这是演示模式")
+            print(f"     如需完整体验，请安装 ZSC-Eval 项目")
         
         print(f"{'='*60}\n")
     

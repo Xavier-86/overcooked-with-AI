@@ -134,7 +134,13 @@ def check_environment() -> bool:
         symbol = "✓" if status else "✗"
         print(f"  {symbol} {name}")
     
-    return all(checks.values())
+    # 独立模式下，只要有 pynput 就可以运行（演示模式）
+    if not checks['zsceval']:
+        print("\n  ℹ️  提示: 未检测到 ZSC-Eval")
+        print("      工具将以演示模式运行")
+        print("      如需完整功能，请安装 ZSC-Eval\n")
+    
+    return checks['pynput']
 
 
 def print_banner():
