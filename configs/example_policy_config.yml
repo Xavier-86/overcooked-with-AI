@@ -1,0 +1,30 @@
+# 示例策略配置文件
+# 用于 human-test 工具加载策略
+
+# 配置格式说明:
+# 每个策略包含以下字段:
+#   - policy_config_path: 策略配置文件路径 (相对于 POLICY_POOL)
+#   - model_path: 模型权重路径 (可选)
+#   - featurize_type: 特征化类型 (ppo, etc.)
+#   - algo: 算法名称
+
+# BACH S2 策略示例
+bach_s2_0:
+  policy_config_path: "random0_m/bach/s2/policy_config.pkl"
+  model_path: "random0_m/bach/s2/actor_checkpoint.pt"
+  featurize_type: "ppo"
+  algo: "bach"
+
+# MEP S1 策略示例  
+mep_s1_0:
+  policy_config_path: "random0_m/mep/s1/policy_config.pkl"
+  model_path: "random0_m/mep/s1/actor_checkpoint.pt"
+  featurize_type: "ppo"
+  algo: "mep"
+
+# FCP S2 策略示例
+fcp_s2_0:
+  policy_config_path: "random0_m/fcp/s2/policy_config.pkl"
+  model_path: "random0_m/fcp/s2/actor_checkpoint.pt"
+  featurize_type: "ppo"
+  algo: "fcp"
