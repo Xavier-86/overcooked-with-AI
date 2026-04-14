@@ -12,20 +12,20 @@ parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')
 if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
-from .pygame_core import PygameHumanTest
+from .standalone_core import StandaloneHumanTest
 
 
 def main():
-    """主入口函数 - Pygame版本"""
+    """主入口函数 - 独立版"""
     import argparse
     
     parser = argparse.ArgumentParser(
         prog='overcooked-human-test',
-        description='人机混合测试工具 - 使用Pygame渲染',
+        description='人机混合测试工具 - 独立版（无需ZSC-Eval）',
     )
     
     parser.add_argument('-e', '--env', type=str, default='random0_m',
-                       help='游戏地图环境')
+                       help='游戏地图')
     parser.add_argument('-a', '--algo', type=str, default='bach',
                        help='AI算法')
     parser.add_argument('-p', '--human-player', type=int, default=0, choices=[0, 1],
@@ -38,7 +38,7 @@ def main():
     args = parser.parse_args()
     
     try:
-        test = PygameHumanTest(
+        test = StandaloneHumanTest(
             env_name=args.env,
             algo=args.algo,
             human_player=args.human_player,
