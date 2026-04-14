@@ -61,24 +61,28 @@ class CLIRenderer(BaseRenderer):
         # 状态栏
         score = game_state.get('score', 0)
         time_left = game_state.get('time', 0)
-        status_line = f' 得分: {score}  |  时间: {time_left}s '
+        status_line = f' Score: {score} | Time: {time_left}s '
         print('║' + status_line.ljust(self.width - 2) + '║')
         print('╠' + '═' * (self.width - 2) + '╣')
         
-        # 游戏区域
+        # 游戏区域 - 左对齐显示网格
         grid = game_state.get('grid', [])
-        for row in grid:
-            line = ''.join(self._format_cell(cell) for cell in row)
-            print('║ ' + line.ljust(self.width - 4) + ' ║')
+        if grid:
+            # 计算网格宽度
+            cell_width = 2  # 每个格子显示为2个字符宽度
+            for row in grid:
+                # 将每个格子格式化为固定宽度
+                formatted_row = ''.join(self._format_cell(cell).ljust(cell_width) for cell in row)
+                print('║ ' + formatted_row.ljust(self.width - 4) + ' ║')
         
         # 填充空白行
-        grid_height = len(grid)
+        grid_height = len(grid) if grid else 0
         for _ in range(self.height - grid_height - 6):
             print('║' + ' ' * (self.width - 2) + '║')
         
         # 控制说明
         print('╠' + '═' * (self.width - 2) + '╣')
-        controls = ' [WASD]移动 [空格]交互 [Q]退出 '
+        controls = ' [WASD]Move [E]Act [Q]Quit '
         print('║' + controls.center(self.width - 2) + '║')
         print('╚' + '═' * (self.width - 2) + '╝')
     

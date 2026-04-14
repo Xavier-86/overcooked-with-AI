@@ -6,19 +6,19 @@
 
 [English](README.md) | [中文](README.zh.md)
 
-> 🎮 A lightweight CLI tool for human-AI collaboration testing in Overcooked environments.
+> 🎮 Human-AI collaboration testing in Overcooked with Pygame rendering.
 
-overcooked-with-AI allows you to play Overcooked with trained AI agents directly from your terminal. Test your coordination skills against state-of-the-art algorithms like BACH, FCP, and MEP!
+**overcooked-with-AI** allows you to play Overcooked with trained AI agents using the original game graphics. Test your coordination skills against state-of-the-art algorithms like BACH, FCP, and MEP!
 
 ---
 
 ## ✨ Features
 
 - 🚀 **Easy to Install** - One-command installation with pip
-- 🎮 **Interactive Gameplay** - Real-time keyboard controls
+- 🎮 **Pygame Rendering** - Uses original Overcooked AI graphics
 - 🤖 **Multiple AI Agents** - Test against BACH, FCP, MEP, and more
 - 💻 **Cross-Platform** - Works on Windows, Ubuntu, and macOS
-- 🖥️ **Terminal-Based** - No GUI required, runs in any terminal
+- 🖱️ **Keyboard Controls** - Real-time WASD + Space controls
 - 📊 **Result Tracking** - Automatic scoring and statistics
 
 ---
@@ -28,8 +28,8 @@ overcooked-with-AI allows you to play Overcooked with trained AI agents directly
 ### Requirements
 
 - Python 3.9+
-- Terminal with Unicode support
-- (macOS only) Input Monitoring permission for your terminal
+- Pygame (`pip install pygame`)
+- ZSC-Eval project dependencies
 
 ### Quick Install
 
@@ -38,36 +38,30 @@ cd ~/ZSC/ZSC-Eval/human_test
 pip install -e .
 ```
 
-### macOS Permission Setup (Important!)
+### Install Dependencies
 
-On macOS, you need to grant Input Monitoring permission to your terminal:
-
-1. Open **System Settings** → **Privacy & Security** → **Input Monitoring**
-2. Click **+** to add your terminal app (Terminal or iTerm)
-3. Check the box next to your terminal app
-4. **Restart your terminal**
+```bash
+pip install pygame numpy
+```
 
 ---
 
 ## 🚀 Quick Start
 
-### Option 1: Interactive Quickstart
+### Run the Game
 
 ```bash
-python quickstart.py
-```
-
-### Option 2: Direct Usage
-
-```bash
-# Basic test
-overcooked-with-ai --env random0_m --algo bach
+# Basic test (Human as Player 0)
+python -m human_test.cli -e random0_m -a bach
 
 # Human as Player 1
-overcooked-with-ai -e random0_m -a bach -p 1
+python -m human_test.cli -e random0_m -a bach -p 1
 
 # Multiple episodes
-overcooked-with-ai -e random0_m -a bach -n 5
+python -m human_test.cli -e random0_m -a bach -n 5
+
+# Larger tiles (easier to see)
+python -m human_test.cli -e random0_m -a bach --tile-size 100
 ```
 
 ---
@@ -80,9 +74,8 @@ overcooked-with-ai -e random0_m -a bach -n 5
 | `S` / `↓` | Move Down |
 | `A` / `←` | Move Left |
 | `D` / `→` | Move Right |
-| `Space` | Interact (pick up / put down / cook) |
-| `P` | Pause |
-| `Q` / `ESC` | Quit |
+| `Space` / `E` | Interact (pick up / put down / cook) |
+| `Q` | Quit |
 
 ---
 
@@ -92,11 +85,7 @@ overcooked-with-ai -e random0_m -a bach -n 5
 - `random3_m` - Three-ingredient kitchen
 - `forced_coordination` - Forced cooperation scenario
 - `asymmetric_advantages` - Asymmetric advantages
-
-List all environments:
-```bash
-overcooked-with-ai --list-envs
-```
+- `cramped_room` - Small kitchen
 
 ---
 
@@ -104,7 +93,7 @@ overcooked-with-ai --list-envs
 
 | Algorithm | Description |
 |-----------|-------------|
-| `bach` | **BACH** (Recommended) - Büchi Automata Conditioned Harmony |
+| `bach` | **BACH** - Büchi Automata Conditioned Harmony |
 | `fcp` | Fictitious Co-Play |
 | `mep` | Maximum Entropy Population |
 | `trajedi` | Trajectory Diversity |
@@ -112,16 +101,10 @@ overcooked-with-ai --list-envs
 | `cole` | Open-Ended Learning |
 | `sp` | Self-Play |
 
-List all algorithms:
-```bash
-overcooked-with-ai --list-algos
-```
-
 ---
 
 ## 📚 Documentation
 
-- [CLI Documentation](CLI.md) - Full command-line reference
 - [Installation Guide](INSTALL.md) - Detailed installation for all platforms
 - [中文文档](README.zh.md) - Chinese documentation
 
@@ -134,44 +117,32 @@ human_test/
 ├── README.md              # This file
 ├── README.zh.md           # Chinese documentation
 ├── INSTALL.md             # Installation guide
-├── CLI.md                 # CLI reference
 ├── setup.py               # Package setup
-├── quickstart.py          # Interactive quickstart ⭐
-├── test_install.py        # Installation test
-├── configs/               # Configuration files
+├── requirements.txt       # Python dependencies
 ├── human_test/            # Core source code
+│   ├── __init__.py
 │   ├── cli.py             # CLI entry point
-│   ├── core.py            # Game logic
+│   ├── pygame_core.py     # Pygame game logic ⭐
 │   ├── keyboard.py        # Keyboard handling
-│   ├── renderer.py        # Terminal rendering
 │   └── utils.py           # Utilities
 └── examples/              # Example scripts
-    ├── batch_test.sh
-    ├── compare_algos.py
-    └── custom_policy.py
 ```
 
 ---
 
 ## 🐛 Troubleshooting
 
-### Keyboard input not working (macOS)
+### Pygame not found
 
 ```bash
-# Reset Input Monitoring permissions
-sudo tccutil reset All com.apple.Terminal
-
-# Or for iTerm2
-sudo tccutil reset All com.googlecode.iterm2
+pip install pygame
 ```
 
-Then re-add your terminal in System Settings → Privacy & Security → Input Monitoring.
-
-### Display issues
+### ZSC-Eval not found
 
 ```bash
-# Use ASCII mode for better compatibility
-overcooked-with-ai -e random0_m -a bach -r ascii
+# Add ZSC-Eval to Python path
+export PYTHONPATH="${PYTHONPATH}:~/ZSC/ZSC-Eval"
 ```
 
 ### Policy loading fails
@@ -179,9 +150,6 @@ overcooked-with-ai -e random0_m -a bach -r ascii
 ```bash
 # Set policy pool path
 export POLICY_POOL=/path/to/policy_pool
-
-# Or use custom config
-overcooked-with-ai -e random0_m -a bach --policy-path /path/to/config.yml
 ```
 
 ---

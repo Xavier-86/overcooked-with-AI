@@ -5,10 +5,10 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="overcooked-with-AI",
-    version="0.1.0",
+    version="0.2.0",
     author="ZSC-Eval Team",
     author_email="",
-    description="Overcooked with AI - Human-AI collaboration testing tool",
+    description="Overcooked Human-AI Testing Tool with Pygame",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/your-org/ZSC-Eval",
@@ -28,20 +28,12 @@ setup(
     ],
     python_requires=">=3.9",
     install_requires=[
-        "pynput>=1.7.0",
+        "pygame>=2.5.0",
         "numpy>=1.20.0",
-        "colorama>=0.4.0;platform_system=='Windows'",
     ],
-    extras_require={
-        "dev": [
-            "pytest>=7.0",
-            "black>=22.0",
-            "flake8>=4.0",
-        ],
-    },
     entry_points={
         "console_scripts": [
-            "overcooked-with-ai=human_test.cli:main",
+            "overcooked-human-test=human_test.cli:main",
         ],
     },
     include_package_data=True,

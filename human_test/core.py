@@ -46,12 +46,41 @@ class DummyMDP:
         return DummyState(self)
     
     def get_state_transition(self, state, actions):
-        """模拟状态转移"""
-        # 模拟奖励（偶尔给分）
+        """模拟状态转移 - 处理玩家移动"""
+        # 复制当前状态（保留位置）
+        new_state = DummyState(self)
+        
+        # 复制玩家当前位置
+        for i, (old_player, new_player) in enumerate(zip(state.players, new_state.players)):
+            new_player.position = old_player.position
+            new_player._held_object = old_player._held_object
+        
+        # 更新每个玩家的位置
+        for i, (player, action) in enumerate(zip(new_state.players, actions)):
+            x, y = player.position
+            if action == 0:  # up
+                new_y = max(0, y - 1)
+                if self.terrain_mtx[new_y][x] != '#':
+                    player.position = (x, new_y)
+            elif action == 1:  # down
+                new_y = min(self.height - 1, y + 1)
+                if self.terrain_mtx[new_y][x] != '#':
+                    player.position = (x, new_y)
+            elif action == 2:  # left
+                new_x = max(0, x - 1)
+                if self.terrain_mtx[y][new_x] != '#':
+                    player.position = (new_x, y)
+            elif action == 3:  # right
+                new_x = min(self.width - 1, x + 1)
+                if self.terrain_mtx[y][new_x] != '#':
+                    player.position = (new_x, y)
+            # action 4 = interact, 5 = stay (不移动)
+        
+        # 模拟奖励
         reward = np.random.choice([0, 0, 0, 0, 5, 10], p=[0.6, 0.15, 0.15, 0.05, 0.03, 0.02])
         done = False
         info = {'episode_done': False}
-        return DummyState(self), reward, done, info
+        return new_state, reward, done, info
     
     def get_valid_player_positions(self):
         """获取有效位置"""
@@ -153,7 +182,7 @@ class HumanTest:
         else:
             self.renderer = CLIRenderer()
         
-        # 初始化键盘处理器
+        # 初始化键盘处理器（自动检测最佳模式）
         self.keyboard = KeyboardHandler()
         
         if not dry_run:
