@@ -259,7 +259,8 @@ class StandaloneHumanTest:
                 break
             
             # AI动作（随机）
-            ai_action = np.random.choice(Action.ALL_ACTIONS)
+            ai_action_idx = np.random.randint(0, len(Action.ALL_ACTIONS))
+            ai_action = Action.ALL_ACTIONS[ai_action_idx]
             
             # 组合动作
             if self.human_player == 0:
